@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichajes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#16202b;--mut:#6b7787;--line:#e4e7ec;--acc:#2557d6;--ok:#1f9d6b;--warn:#d9822b;--bad:#d64545}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 'Inter Tight',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+button,input,textarea{font:inherit;color:inherit}
+.hide{display:none!important}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+nav{display:flex;gap:4px}
+nav button{border:0;background:none;padding:8px 14px;border-radius:8px;color:var(--mut);cursor:pointer;font-weight:500}
+nav button.on{background:var(--bg);color:var(--ink)}
+main{max-width:980px;margin:0 auto;padding:28px 20px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+.btn{border:0;background:var(--acc);color:#fff;padding:12px 22px;border-radius:10px;font-weight:600;cursor:pointer}
+.btn.ghost{background:none;color:var(--mut);border:1px solid var(--line);padding:8px 14px;font-weight:500}
+.btn:disabled{opacity:.5}
+input,textarea{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fff;width:100%}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+#login{max-width:340px;margin:18vh auto 0;display:grid;gap:12px}
+h1{font-size:22px;margin:0 0 4px}
+.mut{color:var(--mut);font-size:13px}
+.err{color:var(--bad);font-size:13px;min-height:18px}
+.hero{text-align:center}
+.big{font-size:68px;font-weight:600;letter-spacing:-.03em;line-height:1.1;margin:8px 0}
+.bar{height:6px;background:var(--bg);border-radius:6px;overflow:hidden;margin:14px auto;max-width:420px}
+.bar i{display:block;height:100%;background:var(--acc);transition:width 1s linear}
+.state{display:inline-block;padding:3px 12px;border-radius:20px;font-size:13px;font-weight:500;background:var(--bg)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px}
+.stat b{display:block;font-size:26px;font-weight:600;letter-spacing:-.02em}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.log{display:flex;flex-wrap:wrap;gap:8px 28px;justify-content:center;margin:18px 0}
+.log div{min-width:96px}.log b{display:block;font-size:18px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-weight:500;color:var(--mut);font-size:13px;padding:8px 6px;border-bottom:1px solid var(--line)}
+td{padding:5px 4px;border-bottom:1px solid var(--line)}
+td input{border-color:transparent;padding:6px}
+td input:hover{border-color:var(--line)}
+.wrap{overflow-x:auto}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:16px}
+.tools label{font-size:13px;color:var(--mut);display:grid;gap:3px}
+.tools input{width:auto}
+.chart{display:flex;align-items:flex-end;gap:3px;height:150px;margin-top:8px}
+.chart div{flex:1;background:var(--acc);border-radius:3px 3px 0 0;min-width:3px;opacity:.85}
+.chart div.over{background:var(--ok)}.chart div.under{background:var(--warn)}
+@media(max-width:600px){.big{font-size:52px}header{padding:10px 12px}main{padding:16px 10px}}
+</style>
+</head>
+<body>
+<section id="login" class="card">
+  <h1>Fichajes</h1>
+  <input id="em" type="email" placeholder="Correo" autocomplete="username">
+  <input id="pw" type="password" placeholder="Clave" autocomplete="current-password">
+  <div class="err" id="lerr"></div>
+  <button class="btn" id="lbtn">Entrar</button>
+</section>
+
+<div id="app" class="hide">
+<header>
+  <nav>
+    <button data-v="fichar" class="on">Fichar</button>
+    <button data-v="registros">Registros</button>
+    <button data-v="resumen">Resumen</button>
+  </nav>
+  <button class="btn ghost" id="out">Salir</button>
+</header>
+<main>
+  <section id="v-fichar">
+    <div class="card hero">
+      <span class="state" id="st"></span>
+      <div class="big" id="work">0h 00m</div>
+      <div class="bar"><i id="pg" style="width:0"></i></div>
+      <div class="mut" id="eta"></div>
+      <div class="log" id="log"></div>
+      <button class="btn" id="punch"></button>
+    </div>
+    <div class="grid">
+      <div class="card stat"><span class="mut">Horas extra acumuladas</span><b id="bal">0h 00m</b></div>
+      <div class="card"><label class="mut" for="tnote">Nota de hoy</label><textarea id="tnote" rows="2" placeholder="Algo que destacar del día"></textarea></div>
+      <div class="card"><label class="mut">Jornada (h)<input id="cfgH" type="number" step="0.25" min="1"></label><label class="mut" style="display:block;margin-top:8px">Saldo inicial (h)<input id="cfgO" type="number" step="0.25"></label></div>
+    </div>
+  </section>
+
+  <section id="v-registros" class="hide">
+    <div class="card">
+      <div class="tools"><button class="btn ghost" id="addDay">Añadir día</button><span class="mut">Los cambios se guardan al salir de cada campo.</span></div>
+      <div class="wrap"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida comer</th><th>Vuelta</th><th>Salida</th><th>Trabajado</th><th>Nota</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="v-resumen" class="hide">
+    <div class="card">
+      <div class="tools">
+        <label>Desde<input type="date" id="d1"></label><label>Hasta<input type="date" id="d2"></label>
+        <button class="btn ghost" data-r="m">Este mes</button><button class="btn ghost" data-r="p">Mes anterior</button><button class="btn ghost" data-r="y">Este año</button>
+      </div>
+      <div class="grid" id="sum"></div>
+      <div class="chart" id="chart"></div>
+      <div class="mut" style="margin-top:8px">Cada barra es un día: verde si superas la jornada, naranja si no la alcanzas.</div>
+      <div id="notes" style="margin-top:16px"></div>
+    </div>
+  </section>
+</main>
+</div>
+
+<script>
+// 1) Rellena estos dos valores (Supabase → Project Settings → API)
+const SB_URL = 'https://vgwyxlvlzwlbdzjupslb.supabase.co';
+const SB_KEY = 'sb_secret_dFlwBDM0HuNrKWy88ScuEQ_AIAazOjX';
+
+const sb = supabase.createClient(SB_URL, SB_KEY);
+const $ = id => document.getElementById(id);
+let rows = [], uid = null;
+let H = +(localStorage.getItem('jh') || 8), OFF = +(localStorage.getItem('jo') || 0);
+const HOUR = 3600000;
+const pad = n => String(n).padStart(2, '0');
+const dstr = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const today = () => dstr(new Date());
+const hm = ms => { const s = ms < 0 ? '-' : '', m = Math.round(Math.abs(ms) / 60000); return `${s}${Math.floor(m / 60)}h ${pad(m % 60)}m`; };
+const tm = iso => { if (!iso) return ''; const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const toIso = (f, t) => t ? new Date(`${f}T${t}`).toISOString() : null;
+const ts = iso => iso ? +new Date(iso) : null;
+
+function worked(r, now) {
+  const E = ts(r.entrada); if (!E) return 0;
+  const A = ts(r.inicio_comida), B = ts(r.fin_comida), S = ts(r.salida);
+  if (!A) return (S || now) - E;
+  let w = A - E; if (B) w += (S || now) - B; return w;
+}
+function stateOf(r) {
+  if (!r || !r.entrada) return 0;      // sin empezar
+  if (r.salida) return 4;              // terminado
+  if (!r.inicio_comida) return 1;      // trabajando
+  if (!r.fin_comida) return 2;         // en la comida
+  return 3;                            // trabajando tras comer
+}
+const LABELS = ['Fichar entrada', 'Salir a comer', 'Volver de comer', 'Fichar salida', 'Jornada terminada'];
+const NAMES = ['Sin empezar', 'Trabajando', 'En la comida', 'Trabajando', 'Jornada terminada'];
+const FIELD = [null, 'inicio_comida', 'fin_comida', 'salida'];
+
+// Saldo de horas extra: suma de (trabajado - jornada) de cada día cerrado, más hoy en directo
+function balance(now) {
+  let b = OFF * HOUR;
+  rows.forEach(r => { if (r.salida || r.fecha === today()) b += worked(r, now) - H * HOUR; });
+  return b;
+}
+
+// ---------- Auth ----------
+$('lbtn').onclick = async () => {
+  $('lerr').textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
+  if (error) $('lerr').textContent = 'Correo o clave incorrectos.'; else boot();
+};
+$('pw').onkeydown = e => { if (e.key === 'Enter') $('lbtn').click(); };
+$('out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+async function boot() {
+  const { data } = await sb.auth.getSession();
+  if (!data.session) return;
+  uid = data.session.user.id;
+  $('login').classList.add('hide'); $('app').classList.remove('hide');
+  $('cfgH').value = H; $('cfgO').value = OFF;
+  await load(); setRange('m'); renderAll();
+}
+async function load() {
+  const { data, error } = await sb.from('fichajes').select('*').order('fecha', { ascending: false });
+  if (error) { alert('No se pudieron cargar los datos: ' + error.message); return; }
+  rows = data;
+}
+async function save(r, patch) {
+  Object.assign(r, patch);
+  const { error } = r.id
+    ? await sb.from('fichajes').update(patch).eq('id', r.id)
+    : await sb.from('fichajes').insert({ ...r, user_id: uid }).select().single().then(x => { if (x.data) Object.assign(r, x.data); return x; });
+  if (error) alert('Error al guardar: ' + error.message);
+}
+function todayRow(create) {
+  let r = rows.find(x => x.fecha === today());
+  if (!r && create) { r = { fecha: today(), nota: '' }; rows.unshift(r); }
+  return r;
+}
+
+// ---------- Fichar ----------
+$('punch').onclick = async () => {
+  const r = todayRow(true), s = stateOf(r), now = new Date().toISOString();
+  if (s === 4) return;
+  $('punch').disabled = true;
+  await save(r, s === 0 ? { entrada: now } : { [FIELD[s]]: now });
+  $('punch').disabled = false; renderAll();
+};
+$('tnote').onchange = async () => { await save(todayRow(true), { nota: $('tnote').value }); renderRegistros(); };
+$('cfgH').onchange = () => { H = +$('cfgH').value || 8; localStorage.setItem('jh', H); renderAll(); };
+$('cfgO').onchange = () => { OFF = +$('cfgO').value || 0; localStorage.setItem('jo', OFF); renderAll(); };
+
+function renderFichar() {
+  const r = todayRow(false), s = stateOf(r), now = Date.now();
+  $('st').textContent = NAMES[s];
+  $('punch').textContent = LABELS[s]; $('punch').disabled = s === 4;
+  const w = r ? worked(r, now) : 0;
+  $('work').textContent = hm(w);
+  $('pg').style.width = Math.min(100, w / (H * HOUR) * 100) + '%';
+  const items = r ? [['Entrada', r.entrada], ['Salida comer', r.inicio_comida], ['Vuelta', r.fin_comida], ['Salida', r.salida]].filter(x => x[1]) : [];
+  $('log').innerHTML = items.map(([a, b]) => `<div><span class="mut">${a}</span><b>${tm(b)}</b></div>`).join('');
+  if (s === 1 || s === 3) $('eta').textContent = w >= H * HOUR ? `Jornada de ${H}h completada. Ya estás sumando extra.` : `Salida estimada a las ${tm(new Date(now + H * HOUR - w))}`;
+  else if (s === 2) $('eta').textContent = `Te quedan ${hm(H * HOUR - w)} para completar la jornada`;
+  else if (s === 4) $('eta').textContent = `Hoy: ${hm(w - H * HOUR)} respecto a la jornada`;
+  else $('eta').textContent = 'Ficha tu entrada para empezar a contar.';
+  const b = balance(now);
+  $('bal').textContent = (b > 0 ? '+' : '') + hm(b); $('bal').className = b >= 0 ? 'pos' : 'neg';
+  if (document.activeElement !== $('tnote')) $('tnote').value = r ? r.nota || '' : '';
+}
+
+// ---------- Registros ----------
+function renderRegistros() {
+  const now = Date.now();
+  $('tb').innerHTML = rows.map((r, i) => `<tr>
+    <td><input type="date" data-i="${i}" data-f="fecha" value="${r.fecha}"></td>
+    ${['entrada', 'inicio_comida', 'fin_comida', 'salida'].map(f => `<td><input type="time" data-i="${i}" data-f="${f}" value="${tm(r[f])}"></td>`).join('')}
+    <td>${r.entrada ? hm(worked(r, r.salida ? 0 : now)) : '–'}</td>
+    <td><input data-i="${i}" data-f="nota" value="${(r.nota || '').replace(/"/g, '&quot;')}" placeholder="Nota"></td>
+    <td><button class="btn ghost" data-del="${i}" title="Eliminar día">✕</button></td></tr>`).join('') || '<tr><td colspan="8" class="mut">Aún no hay fichajes.</td></tr>';
+}
+$('tb').onchange = async e => {
+  const i = e.target.dataset.i; if (i === undefined) return;
+  const r = rows[i], f = e.target.dataset.f, v = e.target.value;
+  const patch = f === 'nota' ? { nota: v } : f === 'fecha' ? { fecha: v } : { [f]: toIso(r.fecha, v) };
+  if (f === 'fecha') { for (const k of ['entrada', 'inicio_comida', 'fin_comida', 'salida']) if (r[k]) patch[k] = toIso(v, tm(r[k])); }
+  await save(r, patch); rows.sort((a, b) => b.fecha.localeCompare(a.fecha)); renderAll();
+};
+$('tb').onclick = async e => {
+  const i = e.target.dataset.del; if (i === undefined) return;
+  if (!confirm('¿Eliminar este día?')) return;
+  const r = rows[i]; if (r.id) await sb.from('fichajes').delete().eq('id', r.id);
+  rows.splice(i, 1); renderAll();
+};
+$('addDay').onclick = async () => {
+  const f = prompt('Fecha del día (AAAA-MM-DD):', today()); if (!f || !/^\d{4}-\d\d-\d\d$/.test(f)) return;
+  if (rows.some(r => r.fecha === f)) return alert('Ese día ya existe.');
+  const r = { fecha: f, nota: '' }; rows.push(r); await save(r, {});
+  rows.sort((a, b) => b.fecha.localeCompare(a.fecha)); renderAll();
+};
+
+// ---------- Resumen ----------
+function setRange(k) {
+  const n = new Date(); let a, b;
+  if (k === 'm') { a = new Date(n.getFullYear(), n.getMonth(), 1); b = new Date(n.getFullYear(), n.getMonth() + 1, 0); }
+  if (k === 'p') { a = new Date(n.getFullYear(), n.getMonth() - 1, 1); b = new Date(n.getFullYear(), n.getMonth(), 0); }
+  if (k === 'y') { a = new Date(n.getFullYear(), 0, 1); b = new Date(n.getFullYear(), 11, 31); }
+  $('d1').value = dstr(a); $('d2').value = dstr(b); renderResumen();
+}
+document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => setRange(b.dataset.r));
+$('d1').onchange = $('d2').onchange = renderResumen;
+function renderResumen() {
+  const a = $('d1').value, b = $('d2').value, now = Date.now();
+  const rs = rows.filter(r => r.fecha >= a && r.fecha <= b && r.entrada && (r.salida || r.fecha === today())).sort((x, y) => x.fecha.localeCompare(y.fecha));
+  const ws = rs.map(r => worked(r, now)), tot = ws.reduce((x, y) => x + y, 0);
+  const diff = tot - rs.length * H * HOUR;
+  const st = (l, v, c = '') => `<div class="card stat"><span class="mut">${l}</span><b class="${c}">${v}</b></div>`;
+  $('sum').innerHTML = st('Horas trabajadas', hm(tot)) + st('Días fichados', rs.length) + st('Media diaria', rs.length ? hm(tot / rs.length) : '–') +
+    st('Extra del periodo', (diff > 0 ? '+' : '') + hm(diff), diff >= 0 ? 'pos' : 'neg');
+  const mx = Math.max(H * HOUR, ...ws, 1);
+  $('chart').innerHTML = rs.map((r, i) => `<div class="${ws[i] >= H * HOUR ? 'over' : 'under'}" style="height:${ws[i] / mx * 100}%" title="${r.fecha}: ${hm(ws[i])}"></div>`).join('');
+  const ns = rows.filter(r => r.fecha >= a && r.fecha <= b && r.nota).sort((x, y) => y.fecha.localeCompare(x.fecha));
+  $('notes').innerHTML = ns.length ? '<b>Notas</b>' + ns.map(r => `<div style="margin-top:6px"><span class="mut">${r.fecha}</span> ${r.nota.replace(/</g, '&lt;')}</div>`).join('') : '';
+}
+
+// ---------- Navegación y reloj ----------
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  ['fichar', 'registros', 'resumen'].forEach(v => $('v-' + v).classList.toggle('hide', v !== b.dataset.v));
+  renderAll();
+});
+function renderAll() { renderFichar(); renderRegistros(); renderResumen(); }
+setInterval(() => { if (uid && !$('v-fichar').classList.contains('hide')) renderFichar(); }, 1000);
+boot();
+</script>
+</body>
+</html>
