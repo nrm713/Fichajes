@@ -113,7 +113,7 @@ td input:hover{border-color:var(--line)}
 <script>
 // 1) Rellena estos dos valores (Supabase → Project Settings → API)
 const SB_URL = 'https://vgwyxlvlzwlbdzjupslb.supabase.co';
-const SB_KEY = 'sb_secret_dFlwBDM0HuNrKWy88ScuEQ_AIAazOjX';
+const SB_KEY = 'sb_publishable_ZKXamsHJc00lTGrHjMVQ1g_tMU0NOtS';
 
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const $ = id => document.getElementById(id);
@@ -156,7 +156,7 @@ function balance(now) {
 $('lbtn').onclick = async () => {
   $('lerr').textContent = '';
   const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
-  if (error) $('lerr').textContent = 'Correo o clave incorrectos.'; else boot();
+  if (error) { $('lerr').textContent = error.message; console.error(error); } else boot();
 };
 $('pw').onkeydown = e => { if (e.key === 'Enter') $('lbtn').click(); };
 $('out').onclick = async () => { await sb.auth.signOut(); location.reload(); };
